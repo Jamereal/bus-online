@@ -10,20 +10,22 @@
     <h1>ระบบเช็คชื่อผู้โดยสารรถทัวร์</h1>
 
     <div class="controls">
-      <div class="api-info">
+      <!-- ซ่อนส่วนตั้งค่า API URL ไม่ให้ผู้ใช้เห็น -->
+      <div class="api-info" style="display:none">
         <label>API URL:</label>
         <input id="apiUrlInput" type="text" />
         <button id="saveApiUrlBtn">บันทึก</button>
       </div>
 
       <div class="reset-area">
-        <button id="resetBtn" class="danger">รีเซ็ตที่นั่งทั้งหมด (เริ่มรอบใหม่)</button>
+        <button id="resetBtn" class="danger">
+          รีเซ็ตที่นั่งทั้งหมด (เริ่มรอบใหม่)
+        </button>
       </div>
     </div>
 
     <p class="hint">
-      * เปิดเว็บนี้หลายเครื่องพร้อมกัน ถ้าใช้ API URL เดียวกัน<br />
-      เมื่อเช็คชื่อที่เครื่องหนึ่ง เครื่องอื่นจะอัปเดตตามอัตโนมัติ
+      ลิงก์เว็บนี้ใช้ร่วมกันได้ทั่วโลก เมื่อมีคนเช็คชื่อ ที่นั่งของทุกคนจะอัปเดตทันทีแบบ real-time
     </p>
 
     <div id="statusMessage" class="status-message"></div>
@@ -37,240 +39,236 @@
     </div>
   </div>
 
-<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <!-- socket.io client -->
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 
   <script>
-  const DEFAULT_API_URL = 'http://localhost:3000';
-  const API_URL_KEY = 'busCheckApiUrl';
+    // ใช้ URL ของเว็บปัจจุบันอัตโนมัติ ทั้งตอนรันในเครื่องและบน Render
+    const DEFAULT_API_URL = window.location.origin;
 
-  function getApiUrl() {
-    return localStorage.getItem(API_URL_KEY) || DEFAULT_API_URL;
-  }
+    const apiUrlInput = document.getElementById('apiUrlInput');
+    const saveApiUrlBtn = document.getElementById('saveApiUrlBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const seatsContainer = document.getElementById('seatsContainer');
+    const statusMessage = document.getElementById('statusMessage');
 
-  function setApiUrl(url) {
-    localStorage.setItem(API_URL_KEY, url);
-  }
-
-  const apiUrlInput = document.getElementById('apiUrlInput');
-  const saveApiUrlBtn = document.getElementById('saveApiUrlBtn');
-  const resetBtn = document.getElementById('resetBtn');
-  const seatsContainer = document.getElementById('seatsContainer');
-  const statusMessage = document.getElementById('statusMessage');
-
-  apiUrlInput.value = getApiUrl();
-
-  let socket = null; // ตัวแปรเก็บ socket ปัจจุบัน
-
-  // ---------- socket.io ----------
-  function setupSocket() {
-    // ถ้ามีอันเก่าอยู่ ให้ปิดก่อน
-    if (socket) {
-      socket.disconnect();
-      socket = null;
+    // ตั้งค่าเริ่มต้นให้เป็น URL ปัจจุบัน (ถึงผู้ใช้จะไม่เห็น แต่กัน error ไว้)
+    if (apiUrlInput) {
+      apiUrlInput.value = DEFAULT_API_URL;
     }
 
-    const baseUrl = getApiUrl();
-
-    // เชื่อมไปยัง backend (port 3000 หรือ URL ที่ตั้ง)
-    socket = io(baseUrl, {
-      transports: ['websocket', 'polling']
-    });
-
-    socket.on('connect', () => {
-      console.log('socket connected', socket.id);
-      showStatus('เชื่อมต่อเซิร์ฟเวอร์เรียบร้อย', 'success');
-    });
-
-    socket.on('disconnect', () => {
-      console.log('socket disconnected');
-      showStatus('การเชื่อมต่อ socket หลุด', 'error');
-    });
-
-    // 👉 เมื่อ server ส่งที่นั่งใหม่มา
-    socket.on('seatsUpdated', (seats) => {
-      renderSeats(seats);
-    });
-  }
-
-  saveApiUrlBtn.addEventListener('click', () => {
-    const url = apiUrlInput.value.trim();
-    if (!url) {
-      alert('กรุณาใส่ API URL');
-      return;
+    function getApiUrl() {
+      return DEFAULT_API_URL;
     }
-    setApiUrl(url);
-    showStatus('บันทึก API URL แล้ว', 'success');
-    loadSeatsFromServer(); // โหลดข้อมูลรอบแรก
-    setupSocket();         // ต่อ socket ใหม่ให้ชี้ไป URL ใหม่
-  });
 
-  resetBtn.addEventListener('click', async () => {
-    const confirmReset = confirm('ต้องการรีเซ็ตที่นั่งทั้งหมดใช่ไหม?');
-    if (!confirmReset) return;
+    let socket = null; // ตัวแปรเก็บ socket ปัจจุบัน
 
-    try {
-      const res = await fetch(getApiUrl() + '/api/seats/reset', {
+    // ---------- socket.io ----------
+    function setupSocket() {
+      // ถ้ามีอันเก่าอยู่ ให้ปิดก่อน
+      if (socket) {
+        socket.disconnect();
+        socket = null;
+      }
+
+      const baseUrl = getApiUrl();
+
+      // เชื่อมไปยัง backend (โดเมนเดียวกับที่เปิดเว็บ)
+      socket = io(baseUrl, {
+        transports: ['websocket', 'polling']
+      });
+
+      socket.on('connect', () => {
+        console.log('socket connected', socket.id);
+        showStatus('เชื่อมต่อเซิร์ฟเวอร์เรียบร้อย', 'success');
+      });
+
+      socket.on('disconnect', () => {
+        console.log('socket disconnected');
+        showStatus('การเชื่อมต่อ socket หลุด', 'error');
+      });
+
+      // เมื่อ server ส่งที่นั่งใหม่มา
+      socket.on('seatsUpdated', (seats) => {
+        renderSeats(seats);
+      });
+    }
+
+    // ปุ่มบันทึก (ถึงจะถูกซ่อน แต่กันไว้เผื่อใช้ทีหลัง)
+    if (saveApiUrlBtn) {
+      saveApiUrlBtn.addEventListener('click', () => {
+        showStatus('ระบบตั้งค่า API URL อัตโนมัติแล้ว', 'info');
+      });
+    }
+
+    resetBtn.addEventListener('click', async () => {
+      const confirmReset = confirm('ต้องการรีเซ็ตที่นั่งทั้งหมดใช่ไหม?');
+      if (!confirmReset) return;
+
+      try {
+        const res = await fetch(getApiUrl() + '/api/seats/reset', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (!res.ok) {
+          throw new Error('รีเซ็ตไม่สำเร็จ');
+        }
+
+        showStatus('รีเซ็ตข้อมูลสำเร็จ', 'success');
+        // ไม่ต้อง loadSeatsFromServer() เพราะ server จะ emit seatsUpdated ให้เอง
+      } catch (err) {
+        console.error(err);
+        showStatus('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาลองใหม่อีกครั้ง', 'error');
+      }
+    });
+
+    function showStatus(message, type = 'info') {
+      statusMessage.textContent = message;
+      statusMessage.className = 'status-message ' + type;
+
+      if (message) {
+        setTimeout(() => {
+          statusMessage.textContent = '';
+          statusMessage.className = 'status-message';
+        }, 4000);
+      }
+    }
+
+    // โหลดข้อมูลรอบแรกผ่าน HTTP ปกติ
+    async function loadSeatsFromServer() {
+      try {
+        const res = await fetch(getApiUrl() + '/api/seats');
+        if (!res.ok) {
+          throw new Error('โหลดข้อมูลไม่สำเร็จ');
+        }
+        const seats = await res.json();
+        renderSeats(seats);
+      } catch (err) {
+        console.error(err);
+        showStatus('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาลองใหม่อีกครั้ง', 'error');
+      }
+    }
+
+    function createSeatElement(seat) {
+      const seatDiv = document.createElement('div');
+      seatDiv.classList.add('seat');
+      if (seat.checked) seatDiv.classList.add('checked');
+
+      const numberSpan = document.createElement('div');
+      numberSpan.classList.add('seat-number');
+      numberSpan.textContent = 'ที่นั่ง ' + seat.number;
+
+      const nameSpan = document.createElement('div');
+      nameSpan.classList.add('seat-name');
+      nameSpan.textContent = seat.checked
+        ? 'ชื่อ: ' + (seat.name || '-')
+        : 'ยังไม่เช็คชื่อ';
+
+      const btn = document.createElement('button');
+      btn.classList.add('seat-btn');
+      btn.textContent = seat.checked ? 'ยกเลิกเช็คชื่อ' : 'เช็คชื่อ';
+
+      btn.addEventListener('click', () => {
+        handleSeatClick(seat);
+      });
+
+      seatDiv.appendChild(numberSpan);
+      seatDiv.appendChild(nameSpan);
+      seatDiv.appendChild(btn);
+
+      return seatDiv;
+    }
+
+    function renderSeats(seats) {
+      seatsContainer.innerHTML = '';
+
+      seats.sort((a, b) => a.number - b.number);
+
+      const seatsPerRow = 4; // ซ้าย 2 ขวา 2
+
+      for (let i = 0; i < seats.length; i += seatsPerRow) {
+        const row = document.createElement('div');
+        row.classList.add('seat-row');
+
+        const leftSide = document.createElement('div');
+        leftSide.classList.add('seat-side', 'left-side');
+
+        const rightSide = document.createElement('div');
+        rightSide.classList.add('seat-side', 'right-side');
+
+        for (let j = i; j < i + 2 && j < seats.length; j++) {
+          leftSide.appendChild(createSeatElement(seats[j]));
+        }
+
+        for (let j = i + 2; j < i + 4 && j < seats.length; j++) {
+          rightSide.appendChild(createSeatElement(seats[j]));
+        }
+
+        const aisle = document.createElement('div');
+        aisle.classList.add('aisle');
+
+        row.appendChild(leftSide);
+        row.appendChild(aisle);
+        row.appendChild(rightSide);
+
+        seatsContainer.appendChild(row);
+      }
+    }
+
+    async function handleSeatClick(seat) {
+      if (!seat.checked) {
+        const name = prompt(
+          'กรุณากรอกชื่อผู้โดยสารสำหรับที่นั่ง ' + seat.number + ':'
+        );
+        if (name === null) return;
+        const trimmedName = name.trim();
+        if (!trimmedName) {
+          alert('กรุณาใส่ชื่อ');
+          return;
+        }
+
+        try {
+          await updateSeat(seat.number, { checked: true, name: trimmedName });
+          showStatus('เช็คชื่อสำเร็จ', 'success');
+          // ไม่ต้องโหลดเอง รอ event seatsUpdated จาก server
+        } catch (err) {
+          console.error(err);
+          showStatus('เช็คชื่อไม่สำเร็จ', 'error');
+        }
+      } else {
+        const confirmUncheck = confirm(
+          'ต้องการยกเลิกเช็คชื่อที่นั่ง ' + seat.number + ' ใช่ไหม?'
+        );
+        if (!confirmUncheck) return;
+
+        try {
+          await updateSeat(seat.number, { checked: false, name: '' });
+          showStatus('ยกเลิกเช็คชื่อแล้ว', 'success');
+        } catch (err) {
+          console.error(err);
+          showStatus('ยกเลิกเช็คชื่อไม่สำเร็จ', 'error');
+        }
+      }
+    }
+
+    async function updateSeat(number, data) {
+      const res = await fetch(getApiUrl() + '/api/seats/' + number + '/check', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
       });
 
       if (!res.ok) {
-        throw new Error('รีเซ็ตไม่สำเร็จ');
+        throw new Error('อัปเดตที่นั่งไม่สำเร็จ');
       }
 
-      showStatus('รีเซ็ตข้อมูลสำเร็จ', 'success');
-      // ไม่ต้อง loadSeatsFromServer() เพราะ server จะ emit seatsUpdated ให้เอง
-    } catch (err) {
-      console.error(err);
-      showStatus('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาตรวจสอบ API URL', 'error');
-    }
-  });
-
-  function showStatus(message, type = 'info') {
-    statusMessage.textContent = message;
-    statusMessage.className = 'status-message ' + type;
-
-    if (message) {
-      setTimeout(() => {
-        statusMessage.textContent = '';
-        statusMessage.className = 'status-message';
-      }, 4000);
-    }
-  }
-
-  // โหลดข้อมูลรอบแรกผ่าน HTTP ปกติ
-  async function loadSeatsFromServer() {
-    try {
-      const res = await fetch(getApiUrl() + '/api/seats');
-      if (!res.ok) {
-        throw new Error('โหลดข้อมูลไม่สำเร็จ');
-      }
-      const seats = await res.json();
-      renderSeats(seats);
-    } catch (err) {
-      console.error(err);
-      showStatus('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาตรวจสอบ API URL', 'error');
-    }
-  }
-
-  function createSeatElement(seat) {
-    const seatDiv = document.createElement('div');
-    seatDiv.classList.add('seat');
-    if (seat.checked) seatDiv.classList.add('checked');
-
-    const numberSpan = document.createElement('div');
-    numberSpan.classList.add('seat-number');
-    numberSpan.textContent = 'ที่นั่ง ' + seat.number;
-
-    const nameSpan = document.createElement('div');
-    nameSpan.classList.add('seat-name');
-    nameSpan.textContent = seat.checked
-      ? 'ชื่อ: ' + (seat.name || '-')
-      : 'ยังไม่เช็คชื่อ';
-
-    const btn = document.createElement('button');
-    btn.classList.add('seat-btn');
-    btn.textContent = seat.checked ? 'ยกเลิกเช็คชื่อ' : 'เช็คชื่อ';
-
-    btn.addEventListener('click', () => {
-      handleSeatClick(seat);
-    });
-
-    seatDiv.appendChild(numberSpan);
-    seatDiv.appendChild(nameSpan);
-    seatDiv.appendChild(btn);
-
-    return seatDiv;
-  }
-
-  function renderSeats(seats) {
-    seatsContainer.innerHTML = '';
-
-    seats.sort((a, b) => a.number - b.number);
-
-    const seatsPerRow = 4; // ซ้าย 2 ขวา 2
-
-    for (let i = 0; i < seats.length; i += seatsPerRow) {
-      const row = document.createElement('div');
-      row.classList.add('seat-row');
-
-      const leftSide = document.createElement('div');
-      leftSide.classList.add('seat-side', 'left-side');
-
-      const rightSide = document.createElement('div');
-      rightSide.classList.add('seat-side', 'right-side');
-
-      for (let j = i; j < i + 2 && j < seats.length; j++) {
-        leftSide.appendChild(createSeatElement(seats[j]));
-      }
-
-      for (let j = i + 2; j < i + 4 && j < seats.length; j++) {
-        rightSide.appendChild(createSeatElement(seats[j]));
-      }
-
-      const aisle = document.createElement('div');
-      aisle.classList.add('aisle');
-
-      row.appendChild(leftSide);
-      row.appendChild(aisle);
-      row.appendChild(rightSide);
-
-      seatsContainer.appendChild(row);
-    }
-  }
-
-  async function handleSeatClick(seat) {
-    if (!seat.checked) {
-      const name = prompt(
-        'กรุณากรอกชื่อผู้โดยสารสำหรับที่นั่ง ' + seat.number + ':'
-      );
-      if (name === null) return;
-      const trimmedName = name.trim();
-      if (!trimmedName) {
-        alert('กรุณาใส่ชื่อ');
-        return;
-      }
-
-      try {
-        await updateSeat(seat.number, { checked: true, name: trimmedName });
-        showStatus('เช็คชื่อสำเร็จ', 'success');
-        // ไม่ต้องโหลดเอง รอ event seatsUpdated จาก server
-      } catch (err) {
-        console.error(err);
-        showStatus('เช็คชื่อไม่สำเร็จ', 'error');
-      }
-    } else {
-      const confirmUncheck = confirm(
-        'ต้องการยกเลิกเช็คชื่อที่นั่ง ' + seat.number + ' ใช่ไหม?'
-      );
-      if (!confirmUncheck) return;
-
-      try {
-        await updateSeat(seat.number, { checked: false, name: '' });
-        showStatus('ยกเลิกเช็คชื่อแล้ว', 'success');
-      } catch (err) {
-        console.error(err);
-        showStatus('ยกเลิกเช็คชื่อไม่สำเร็จ', 'error');
-      }
-    }
-  }
-
-  async function updateSeat(number, data) {
-    const res = await fetch(getApiUrl() + '/api/seats/' + number + '/check', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
-
-    if (!res.ok) {
-      throw new Error('อัปเดตที่นั่งไม่สำเร็จ');
+      return res.json();
     }
 
-    return res.json();
-  }
-
-  // ---------- เริ่มต้น ----------
-  loadSeatsFromServer();
-  setupSocket();
-</script>
-
+    // ---------- เริ่มต้น ----------
+    loadSeatsFromServer();
+    setupSocket();
+  </script>
+</body>
+</html>
