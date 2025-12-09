@@ -1,0 +1,236 @@
+* {
+  box-sizing: border-box;
+  font-family: "Prompt", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: #f3f4f6;
+}
+
+.app {
+  max-width: 1000px;
+  margin: 20px auto;
+  padding: 20px;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.06);
+}
+
+h1 {
+  text-align: center;
+  margin-bottom: 20px;
+  color: #111827;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
+.reset-area {
+  display: flex;
+  align-items: center;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  background: #2563eb;
+  color: #ffffff;
+  transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.1s ease;
+}
+
+button:hover {
+  background: #1d4ed8;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);
+  transform: translateY(-1px);
+}
+
+button:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+button.danger {
+  background: #ef4444;
+}
+
+button.danger:hover {
+  background: #dc2626;
+  box-shadow: 0 4px 10px rgba(248, 113, 113, 0.4);
+}
+
+.hint {
+  font-size: 13px;
+  color: #6b7280;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.status-message {
+  min-height: 20px;
+  font-size: 14px;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+.status-message.info {
+  color: #2563eb;
+}
+
+.status-message.success {
+  color: #16a34a;
+}
+
+.status-message.error {
+  color: #dc2626;
+}
+
+/* layout รถทัวร์ */
+
+.bus-layout {
+  margin-top: 16px;
+  padding: 18px 24px 24px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, #e5e7eb, #f9fafb);
+  box-shadow: inset 0 0 0 1px #e5e7eb, 0 14px 40px rgba(15, 23, 42, 0.12);
+  position: relative;
+}
+
+.bus-front {
+  text-align: center;
+  padding: 6px 14px;
+  margin: 0 auto 12px;
+  max-width: 240px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #0ea5e9, #2563eb);
+  color: #f9fafb;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4);
+}
+
+.seats-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.seat-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 26px;
+}
+
+.seat-side {
+  display: flex;
+  gap: 10px;
+}
+
+.aisle {
+  width: 38px;
+  height: 100%;
+  border-radius: 999px;
+  background: repeating-linear-gradient(
+    to bottom,
+    #d1d5db,
+    #d1d5db 4px,
+    #e5e7eb 4px,
+    #e5e7eb 8px
+  );
+  opacity: 0.9;
+}
+
+/* การ์ดที่นั่ง */
+
+.seat {
+  width: 135px;
+  background: #f9fafb;
+  border-radius: 14px;
+  padding: 8px;
+  border: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: box-shadow 0.12s ease, transform 0.12s ease,
+    border-color 0.12s ease, background 0.12s ease;
+}
+
+.seat:hover {
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+  transform: translateY(-1px);
+}
+
+.seat.checked {
+  background: #ecfdf3;
+  border-color: #4ade80;
+  box-shadow: 0 10px 20px rgba(34, 197, 94, 0.25);
+}
+
+.seat-number {
+  font-weight: 700;
+  color: #111827;
+  font-size: 14px;
+}
+
+.seat-name {
+  font-size: 12px;
+  color: #4b5563;
+  min-height: 18px;
+}
+
+.seat-btn {
+  margin-top: 4px;
+  align-self: flex-start;
+  font-size: 12px;
+  padding: 5px 12px;
+}
+
+/* responsive */
+
+@media (max-width: 768px) {
+  .app {
+    margin: 10px;
+    padding: 16px;
+  }
+
+  .seat-row {
+    gap: 14px;
+  }
+
+  .seat {
+    width: 120px;
+  }
+
+  .aisle {
+    width: 26px;
+  }
+}
+
+@media (max-width: 560px) {
+  .seat-row {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+
+  .bus-layout {
+    padding-inline: 12px;
+  }
+
+  .seat {
+    width: 110px;
+  }
+}
